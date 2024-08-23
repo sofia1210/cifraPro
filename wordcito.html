@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cifrado y Descifrado de Documentos Word</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pizzip@3.0.6/dist/pizzip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.21.1/docxtemplater.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    
+    <style id="themeStyle">
+        :root {
+          --bg-color: #f3f4f6;
+          --container-bg: white;
+          --text-color: #333;
+          --primary-color: #3b82f6;
+          --secondary-color: #2563eb;
+          --border-color: #d1d5db;
+          --title-color: #3b82f6;
+          --description-bg: #e2e8f0;
+          --description-text: #333;
+        }
+      
+        body {
+          font-family: Arial, sans-serif;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 100vh;
+          margin: 0;
+          background: var(--bg-color);
+          padding: 20px;
+          color: var(--text-color);
+        }
+        .container {
+          background-color: var(--container-bg);
+          padding: 2rem;
+          border-radius: 8px;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          max-width: 1000px;
+          width: 100%;
+        }
+        h1, h2, h3 {
+          color: var(--title-color);
+          margin-bottom: 1rem;
+        }
+        .button {
+          background-color: var(--primary-color);
+          color: white;
+          border: none;
+          padding: 0.5rem 1rem;
+          border-radius: 4px;
+          cursor: pointer;
+          transition: background-color 0.3s;
+          margin-right: 0.5rem;
+          margin-bottom: 0.5rem;
+        }
+        .button:hover {
+          background-color: var(--secondary-color);
+        }
+        #fileInput, #cipherSelect, #asciiFileInput, #cipheredFileInput, #themeSelect {
+          margin-bottom: 1rem;
+        }
+        textarea {
+          width: 100%;
+          height: 150px;
+          border: 1px solid var(--border-color);
+          border-radius: 4px;
+          padding: 0.5rem;
+          font-family: monospace;
+          resize: vertical;
+          margin-bottom: 1rem;
+          background-color: var(--container-bg);
+          color: var(--text-color);
+        }
+        #asciiTable {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 1rem;
+        }
+        #asciiTable th, #asciiTable td {
+          border: 1px solid var(--border-color);
+          padding: 0.5rem;
+          text-align: center;
+        }
+        #asciiTable th {
+          background-color: var(--primary-color);
+          color: white;
+        }
+        .flex-container {
+          display: flex;
+          justify-content: space-between;
+        }
+        .flex-item {
+          width: 48%;
+        }
+        #optionsContainer {
+          display: flex;
+          justify-content: center;
+          margin-bottom: 2rem;
+        }
+        #cipherApp, #decipherApp {
+          display: none;
+        }
+        .description {
+          background-color: var(--description-bg);
+          color: var(--description-text);
+          padding: 1rem;
+          border-radius: 4px;
+          margin-bottom: 1rem;
+        }
+        a{
+            text-decoration: none;
+            color:white;
+        }
+      </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="text-align: center;">CifraPro: Cifrador y Descifrador</h1>
+        
+        <div id="optionsContainer">
+          
+          <button id="acerca" class="button"><a href="index.html">Volver a la página principal</a></button>
+
+        </div>
+        <label for="themeSelect">Tema de color:</label>
+          <select id="themeSelect">
+            <option value="light">Claro</option>
+            <option value="dark">Oscuro</option>
+            <option value="vibrant">Llamativo</option>
+            <option value="professional">Profesional</option>
+            <option value="casual">Casual</option>
+          </select>
+        <h2>Cifrado y Descifrado de Documentos Word</h2>
+        
+        <input type="file" id="wordInput" accept=".docx">
+        <textarea id="wordContent" placeholder="El contenido del documento se mostrará aquí..."></textarea>
+
+        <select id="cipherSelect">
+            <option value="2">Cifrado de 2 bytes</option>
+            <option value="4">Cifrado de 4 bytes</option>
+            <option value="8">Cifrado de 8 bytes</option>
+            <option value="16">Cifrado de 16 bytes</option>
+            <option value="32">Cifrado de 32 bytes</option>
+        </select>
+        <button id="cipherButton" class="button">Cifrar</button>
+        <button id="downloadBoth" class="button">Descargar texto cifrado y tabla</button>
+
+        <textarea id="cipheredContent" placeholder="El texto cifrado se mostrará aquí..." readonly></textarea>
+
+        <button id="loadCipheredFile" class="button">Cargar archivo cifrado (.txt)</button>
+        <button id="loadAsciiTable" class="button">Cargar tabla ASCII (.txt)</button>
+        <button id="decipherButton" class="button">Descifrar</button>
+        <textarea id="decipheredContent" placeholder="El texto descifrado se mostrará aquí..." readonly></textarea>
+        <!--<button id="downloadWord" class="button">Descargar como Word</button>-->
+    </div>
+
+    <script>
+        const wordInput = document.getElementById('wordInput');
+        const wordContent = document.getElementById('wordContent');
+        const cipherSelect = document.getElementById('cipherSelect');
+        const cipherButton = document.getElementById('cipherButton');
+        const cipheredContent = document.getElementById('cipheredContent');
+        const loadCipheredFile = document.getElementById('loadCipheredFile');
+        const loadAsciiTable = document.getElementById('loadAsciiTable');
+        const themeSelect = document.getElementById('themeSelect');
+        const decipherButton = document.getElementById('decipherButton');
+        const decipheredContent = document.getElementById('decipheredContent');
+        const downloadWord = document.getElementById('downloadWord');
+
+        let originalText = '';
+        let cipheredText = '';
+        let asciiEquivalence = '';
+        let cipherMap = new Map();
+
+        wordInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (!file.name.endsWith('.docx')) {
+                wordContent.value = "Por favor, seleccione un archivo .docx válido.";
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const arrayBuffer = e.target.result;
+
+                mammoth.extractRawText({arrayBuffer: arrayBuffer})
+                    .then(function(result){
+                        wordContent.value = result.value;
+                    })
+                    .catch(function(error){
+                        console.error(error);
+                        wordContent.value = "Error al procesar el archivo. Por favor, asegúrese de que es un documento Word válido (.docx).";
+                    });
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function generateRandomString(length) {
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += characters.charAt(Math.floor(Math.random() * characters.length));
+            }
+            return result;
+        }
+
+        function updateAsciiTable(originalText, cipheredText) {
+            asciiEquivalence = '';
+            const cipherLength = parseInt(cipherSelect.value);
+            for (let i = 0; i < originalText.length; i++) {
+                const originalChar = originalText[i];
+                const cipheredChunk = cipheredText.substr(i * cipherLength, cipherLength);
+                asciiEquivalence += `${originalChar} -> ${cipheredChunk}\n`;
+            }
+        }
+
+        function cipher(text, cipherLength) {
+            cipherMap.clear();
+            let result = '';
+            for (let i = 0; i < text.length; i++) {
+                let char = text[i];
+                
+                // Si el carácter es un salto de línea, lo tratamos como un espacio
+                if (char === '\n') {
+                    char = ' ';
+                }
+
+                if (!cipherMap.has(char)) {
+                    cipherMap.set(char, generateRandomString(cipherLength));
+                }
+                result += cipherMap.get(char);
+            }
+            return result;
+        }
+
+        cipherButton.addEventListener('click', () => {
+            const cipherLength = parseInt(cipherSelect.value);
+            originalText = wordContent.value;
+            cipheredText = cipher(originalText, cipherLength);
+            cipheredContent.value = cipheredText;
+            updateAsciiTable(originalText, cipheredText);
+        });
+
+        const downloadBoth = document.getElementById('downloadBoth'); // Asume que tienes un botón con id 'downloadBoth'
+
+        downloadBoth.addEventListener('click', () => {
+            const cipherLength = cipherSelect.value; // Obtiene el valor seleccionado del select
+
+            // Descargar el texto cifrado
+            const cipheredBlob = new Blob([cipheredText], { type: 'text/plain' });
+            const cipheredUrl = URL.createObjectURL(cipheredBlob);
+            const cipheredLink = document.createElement('a');
+            cipheredLink.href = cipheredUrl;
+            cipheredLink.download = `cifrado_word_${cipherLength}bytes.txt`; // Nombre dinámico
+            cipheredLink.click();
+            URL.revokeObjectURL(cipheredUrl);
+
+            // Descargar la tabla ASCII
+            const asciiBlob = new Blob([asciiEquivalence], { type: 'text/plain' });
+            const asciiUrl = URL.createObjectURL(asciiBlob);
+            const asciiLink = document.createElement('a');
+            asciiLink.href = asciiUrl;
+            asciiLink.download = `tabla_word_${cipherLength}bytes.txt`; // Nombre dinámico
+            asciiLink.click();
+            URL.revokeObjectURL(asciiUrl);
+        });
+
+
+        loadCipheredFile.addEventListener('click', () => {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.txt';
+            fileInput.onchange = (e) => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = () => {
+                    cipheredText = reader.result;
+                    cipheredContent.value = cipheredText;
+                };
+                reader.readAsText(file);
+            };
+            fileInput.click();
+        });
+
+        loadAsciiTable.addEventListener('click', () => {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.txt';
+            fileInput.onchange = (e) => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const asciiContent = reader.result;
+                    asciiEquivalence = asciiContent;
+                    const lines = asciiContent.split('\n');
+                    cipherMap.clear();
+                    for (const line of lines) {
+                        const [original, ciphered] = line.split(' -> ');
+                        if (original && ciphered) {
+                            cipherMap.set(ciphered, original);
+                        }
+                    }
+                };
+                reader.readAsText(file);
+            };
+            fileInput.click();
+        });
+
+        function decipher(text, cipherMap) {
+            let result = '';
+            const cipherLength = parseInt(cipherSelect.value);
+            for (let i = 0; i < text.length; i += cipherLength) {
+                const chunk = text.substr(i, cipherLength);
+                result += cipherMap.get(chunk) || chunk;
+            }
+            return result;
+        }
+
+        decipherButton.addEventListener('click', () => {
+            if (!cipheredText || !asciiEquivalence) {
+                alert('Por favor, cargue el archivo cifrado y la tabla ASCII.');
+                return;
+            }
+            let deciphered = decipher(cipheredText, cipherMap);
+
+            // Restaurar saltos de línea desde los espacios largos
+            deciphered = deciphered.replace(/ +/g, (match) => {
+                return match.length > 1 ? '\n' : match;
+            });
+
+            decipheredContent.value = deciphered;
+        });
+        
+        /*document.getElementById('downloadWord').addEventListener('click', () => {
+            const text = document.getElementById('decipheredContent').value;
+
+            const zip = new PizZip();
+            const doc = new Docxtemplater(zip);
+
+            const content = text.split('\n').map(line => ({ text: line })).filter(line => line.text !== "");
+
+            doc.loadZip(zip);
+            doc.setData({
+                paragraphs: content
+            });
+
+            try {
+                doc.render();
+            } catch (error) {
+                console.error(error);
+                throw error;
+            }
+
+            const out = doc.getZip().generate({
+                type: "blob",
+                mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            });
+
+            saveAs(out, "documento_descifrado.docx");
+        });*/
+        function setTheme(theme) {
+          const root = document.documentElement;
+          switch (theme) {
+            case 'light':
+              root.style.setProperty('--bg-color', '#f3f4f6');
+              root.style.setProperty('--container-bg', 'white');
+              root.style.setProperty('--text-color', '#333');
+              root.style.setProperty('--primary-color', '#3b82f6');
+              root.style.setProperty('--secondary-color', '#2563eb');
+              root.style.setProperty('--border-color', '#d1d5db');
+              root.style.setProperty('--title-color', '#3b82f6');
+              root.style.setProperty('--description-bg', '#e2e8f0');
+              root.style.setProperty('--description-text', '#333');
+              break;
+            case 'dark':
+              root.style.setProperty('--bg-color', '#1f2937');
+              root.style.setProperty('--container-bg', '#374151');
+              root.style.setProperty('--text-color', '#e5e7eb');
+              root.style.setProperty('--primary-color', '#60a5fa');
+              root.style.setProperty('--secondary-color', '#3b82f6');
+              root.style.setProperty('--border-color', '#4b5563');
+              root.style.setProperty('--title-color', '#60a5fa');
+              root.style.setProperty('--description-bg', '#4b5563');
+              root.style.setProperty('--description-text', '#e5e7eb');
+              break;
+            case 'vibrant':
+              root.style.setProperty('--bg-color', '#ff6b6b');
+              root.style.setProperty('--container-bg', '#4ecdc4');
+              root.style.setProperty('--text-color', '#ffffff');
+              root.style.setProperty('--primary-color', '#45b7d1');
+              root.style.setProperty('--secondary-color', '#f7fff7');
+              root.style.setProperty('--border-color', '#ff8484');
+              root.style.setProperty('--title-color', '#ffffff');
+              root.style.setProperty('--description-bg', '#f7fff7');
+              root.style.setProperty('--description-text', '#000000');
+              break;
+            case 'professional':
+              root.style.setProperty('--bg-color', '#f0f4f8');
+              root.style.setProperty('--container-bg', '#ffffff');
+              root.style.setProperty('--text-color', '#2d3748');
+              root.style.setProperty('--primary-color', '#4a5568');
+              root.style.setProperty('--secondary-color', '#718096');
+              root.style.setProperty('--border-color', '#e2e8f0');
+              root.style.setProperty('--title-color', '#2d3748');
+              root.style.setProperty('--description-bg', '#edf2f7');
+              root.style.setProperty('--description-text', '#2d3748');
+              break;
+            case 'casual':
+              root.style.setProperty('--bg-color', '#faf5ff');
+              root.style.setProperty('--container-bg', '#ffffff');
+              root.style.setProperty('--text-color', '#4a5568');
+              root.style.setProperty('--primary-color', '#9f7aea');
+              root.style.setProperty('--secondary-color', '#b794f4');
+              root.style.setProperty('--border-color', '#e9d8fd');
+              root.style.setProperty('--title-color', '#6b46c1');
+              root.style.setProperty('--description-bg', '#f3ebff');
+              root.style.setProperty('--description-text', '#4a5568');
+              break;
+          }
+        }
+    
+        themeSelect.addEventListener('change', (e) => {
+          setTheme(e.target.value);
+        });
+
+        setTheme('light');
+    </script>
+</body>
+</html>
